@@ -1,0 +1,64 @@
+import requests
+from bs4 import BeautifulSoup
+
+# Function to get and parse HTML content from a Wikipedia page
+def get_html_content(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.text
+    else:
+        print("Failed to retrieve the page.")
+        return None
+
+# Function to extract article title
+def extract_title(soup):
+    title = soup.find("h1", {"id": "firstHeading"}).text
+    return title
+
+# Function to extract article text for each paragraph with their respective headings
+def extract_text(soup):
+    content = {}
+    paragraphs = soup.find_all(["p", "h2", "h3", "h4", "h5", "h6"])
+    current_heading = None
+    for elem in paragraphs:
+        if elem.name.startswith('h'):
+            current_heading = elem.text
+            content[current_heading] = []
+        elif current_heading:
+            content[current_heading].append(elem.text)
+    return content
+
+# Function to collect every link that redirects to another Wikipedia page
+def extract_links(soup):
+    links = soup.find_all("a", href=True)
+    wikipedia_links = [link["href"] for link in links if link["href"].startswith("/wiki/")]
+    return wikipedia_links
+
+# Wrap all functions into a single function
+def scrape_wikipedia(url):
+    html_content = get_html_content(url)
+    if html_content:
+        soup = BeautifulSoup(html_content, "html.parser")
+        title = extract_title(soup)
+        text = extract_text(soup)
+        links = extract_links(soup)
+        return {
+            "title": title,
+            "text": text,
+            "links": links
+        }
+    else:
+        return None
+
+# Test the function on a Wikipedia page
+wiki_url = "https://en.wikipedia.org/wiki/Python_(programming_language)"
+result = scrape_wikipedia(wiki_url)
+if result:
+    print("Title:", result["title"])
+    print("\nExtracted Text:")
+    for heading, paragraphs in result["text"].items():
+        print(f"\n{heading}:")
+        for paragraph in paragraphs:
+            print(paragraph)
+    print("\nLinks to other Wikipedia pages:")
+    print(result["links"])
